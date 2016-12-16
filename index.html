@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>noise photo</title>
+  </head>
+  <body>
+
+    <canvas id="source_canvas" width="700" height="500"></canvas>
+    <canvas id="target_canvas" width="700" height="500"></canvas>
+
+
+    <script type="text/javascript">
+
+        let height = 500;
+        let width = 700;
+
+        var source_canvas = document.getElementById("source_canvas");
+        var target_canvas = document.getElementById("target_canvas");
+
+        var source_context = source_canvas.getContext('2d');
+        var target_context = target_canvas.getContext('2d');
+
+        let source_image;
+        let target_image;
+        let buffer_image;
+
+        var color = [];
+        var source_pixel, target_pixel = [];
+
+        var numIterations = 30;
+
+        drawing = new Image();
+        drawing.src = "thailand.png"; // can also be a remote URL e.g. http://
+
+        drawing.onload = function() {
+            //drawing.setAttribute('crossOrigin', '');
+            source_context.drawImage(drawing,0,0, width, height);
+            source_image = source_context.getImageData(0,0,width, height
+            reset();
+
+        };
+
+        function reset(){
+            for (let pIndex = 0; pIndex < source_image.data.length; pIndex += 4){
+                for (sub = 0; sub <3; sub++){
+                    color = Math.floor(Math.random() * 255);
+                    target_image.data[pIndex+sub] = color;
+                }
+                target_image.data[pIndex+3] = 255;
+
+            }
+            putImage();
+
+        }
+
+        function putImage(){
+
+
+                target_context.putImageData(target_image, 0, 0);
+                numIterations--;
+                if (numIterations > 0) window.setTimeout(iterate, 200);
+                //iterate();
+        }
+
+        function diff(source, target){
+            let diff = 0;
+            for (let pIndex = 0; pIndex < source.length; pIndex++){
+                    diff += Math.abs(source[pIndex] - target[pIndex]);
+            }
+            return diff
+        }
+
+
+        function iterate(){
+
+            // create shape
+            // paste shape to buffer
+            // get diff of buffer
+            // get diff of target (or reuse)
+            // compare buffer diff with target diff
+            // put buffer to target if below threshold
+
+        }
+
+    </script>
+
+
+  </body>
+</html>
