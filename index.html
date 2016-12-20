@@ -2,65 +2,93 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>noise photo</title>
+    <title>Shape photo</title>
   </head>
   <body>
 
-    <canvas id="source_canvas" width="700" height="500"></canvas>
-    <canvas id="target_canvas" width="700" height="500"></canvas>
+    <canvas id="source_canvas" width="600" height="400"></canvas>
+    <canvas id="target_canvas" width="600" height="400"></canvas>
+    <canvas id="buffer_canvas" width="600" height="400" style="display: none"></canvas>
 
+    <div id="stats">
+        <br><br>
+            iterations: <span id="iters"></span><br>
+            hits: <span id="hits"></span><br>
+    </div>
+
+    <div id="snapshots">
+
+    </div>
 
     <script type="text/javascript">
 
-        let height = 500;
-        let width = 700;
+        var height = 400;
+        var width = 600;
 
         var source_canvas = document.getElementById("source_canvas");
         var target_canvas = document.getElementById("target_canvas");
+        var buffer_canvas = document.getElementById("buffer_canvas");
 
         var source_context = source_canvas.getContext('2d');
         var target_context = target_canvas.getContext('2d');
+        var buffer_context = buffer_canvas.getContext('2d');
 
         let source_image;
-        let target_image;
-        let buffer_image;
+        let target_image = target_context.getImageData(0,0,width,height);
+        let buffer_image = buffer_context.getImageData(0,0,width,height);
 
         var color = [];
         var source_pixel, target_pixel = [];
 
-        var numIterations = 30;
+        let iters = 0;
+        let hits = 0;
+
+        let shapeType = "rectangle";    // rectangle pen circle
+        let metaShape = "pen";          // TODO make this understandable
+        let snapshotEvery = 1000;
+        let startColor = 255;           // initial color of the recreated image
 
         drawing = new Image();
-        drawing.src = "thailand.png"; // can also be a remote URL e.g. http://
+        drawing.src = "Kantega_logo.png"; // can also be a remote URL e.g. http://
 
         drawing.onload = function() {
             //drawing.setAttribute('crossOrigin', '');
-            source_context.drawImage(drawing,0,0, width, height);
-            source_image = source_context.getImageData(0,0,width, height
-            reset();
+            width = drawing.width;
+            height = drawing.height;
+            Array.prototype.forEach.call(document.getElementsByTagName("canvas"), function (e){
+                e.width = width;
+                e.height = height;
 
+            });
+
+            source_canvas = document.getElementById("source_canvas");
+            target_canvas = document.getElementById("target_canvas");
+            buffer_canvas = document.getElementById("buffer_canvas");
+
+            source_context = source_canvas.getContext('2d');
+            target_context = target_canvas.getContext('2d');
+            buffer_context = buffer_canvas.getContext('2d');
+
+            target_image = target_context.getImageData(0,0,width,height);
+            buffer_image = buffer_context.getImageData(0,0,width,height);
+
+
+            source_context.drawImage(drawing,0,0, drawing.width, drawing.height);
+            source_image = source_context.getImageData(0,0,width, height);
+            reset();
+            iterate();
         };
 
         function reset(){
             for (let pIndex = 0; pIndex < source_image.data.length; pIndex += 4){
+                color = 256;
                 for (sub = 0; sub <3; sub++){
-                    color = Math.floor(Math.random() * 255);
-                    target_image.data[pIndex+sub] = color;
+                    //color = Math.floor(Math.random() * 255
+                    target_image.data[pIndex+sub] = startColor;
                 }
                 target_image.data[pIndex+3] = 255;
-
             }
-            putImage();
-
-        }
-
-        function putImage(){
-
-
-                target_context.putImageData(target_image, 0, 0);
-                numIterations--;
-                if (numIterations > 0) window.setTimeout(iterate, 200);
-                //iterate();
+            target_context.putImageData(target_image, 0, 0);
         }
 
         function diff(source, target){
@@ -71,16 +99,123 @@
             return diff
         }
 
+        // creates a reandomized circle inside the canvas
+        function putCircle(){
+            buffer_context.putImageData(target_context.getImageData(0,0,width,height),0,0);
+            let radius = Math.random() * 50 + 10;
+            let x = Math.random() * (width);
+            let y = Math.random() * (height);
+
+            buffer_context.fillStyle = getRndColor();
+            buffer_context.beginPath();
+            buffer_context.arc(x, y, radius, 0, Math.PI*2, true);
+            buffer_context.fill();
+        }
+
+        function getRndColor() {
+            var r = 255*Math.random()|0,
+                g = 255*Math.random()|0,
+                b = 255*Math.random()|0;
+            return 'rgba(' + r + ',' + g + ',' + b + ','+1+')';
+        }
+
+        function putShape(context, shape){
+
+            context.beginPath();
+            context.fillStyle = shape.color;
+
+            if (shapeType == "rectangle" || shapeType == "pen"){
+                context.rect(shape.x, shape.y, shape.width, shape.height);
+            } else {
+
+                context.arc(shape.center_x, shape.center_y, shape.radius, 0, Math.PI*2, true);
+            }
+
+            context.fill();
+        }
+
+        function generateShapeData(){
+
+            shp = shapeType;
+
+            if (metaShape =="pen"){
+                shp = ((Math.random() * 2) > 1) ? "rectangle" : "pen";
+            }
+
+            if (shp == "rectangle"){
+
+                return {
+                    x : Math.random() * (width),
+                    y : Math.random() * (height),
+                    width: Math.random() * 100,
+                    height: Math.random() * 100,
+                    color: getRndColor()
+                }
+
+            } else if (shp == "pen"){
+                let flip = ((Math.random() * 2) > 1);
+                w = Math.random() * (width / 3),
+                h = 1;
+                return {
+                    x : Math.random() * (width),
+                    y : Math.random() * (height),
+                    width: flip ? h :w,
+                    height: flip ? w : h,
+                    color: getRndColor()
+                }
+
+            } else {
+                let radius = Math.random() * 50 + 10;
+                let x = Math.random() * (width);
+                let y = Math.random() * (height);
+
+                return {
+                    x: x,
+                    y: y,
+                    width: radius * 2,
+                    height: radius * 2,
+                    radius: radius,
+                    center_x: x + radius,
+                    center_y: y + radius,
+                    color: getRndColor()
+                }
+            }
+
+        }
 
         function iterate(){
+            for (let i = 0; i < 1000; i++){
+                iters++;
+                let shape = generateShapeData();
+                putShape(buffer_context, shape);
 
-            // create shape
-            // paste shape to buffer
-            // get diff of buffer
-            // get diff of target (or reuse)
-            // compare buffer diff with target diff
-            // put buffer to target if below threshold
+                let diffBuffer = diff(source_context.getImageData(shape.x, shape.y, shape.width, shape.height).data, buffer_context.getImageData(shape.x, shape.y, shape.width, shape.height).data);
+                let diffTarget = diff(source_context.getImageData(shape.x, shape.y, shape.width, shape.height).data, target_context.getImageData(shape.x, shape.y, shape.width, shape.height).data);
+                if (diffBuffer < diffTarget){
+                    putShape(target_context, shape);
+                    hits++;
+                    if (hits % snapshotEvery == 0) createSnapshot();
+                } else{
+                    buffer_context.putImageData(target_context.getImageData(shape.x, shape.y, shape.width, shape.height), shape.x, shape.y)
+                }
 
+            }
+            updateStats();
+            window.setTimeout(iterate, 1);
+
+        }
+
+        function updateStats(){
+            document.getElementById("iters").innerText = iters;
+            document.getElementById("hits").innerText = hits;
+        }
+
+        function createSnapshot(){
+            let c = document.createElement("canvas");
+            c.width = width;
+            c.height = height;
+            c.getContext("2d").putImageData(target_context.getImageData(0,0,width, height), 0,0);
+            document.getElementById("snapshots").appendChild(c);
         }
 
     </script>
